@@ -5,6 +5,9 @@ var tests = new (string Name, Action Test)[]
     ("formats a reading in the supplied time zone", FormatsReading),
     ("keeps the city and time-zone identity", PreservesIdentity),
     ("fails when the time-zone resolver cannot resolve a zone", FailsForUnknownZone),
+    ("round-trips settings through JSON", RoundTripsSettings),
+    ("uses defaults when the settings file is missing", UsesDefaultsWhenMissing),
+    ("uses defaults when the settings file is malformed", UsesDefaultsWhenMalformed),
 };
 
 var failures = 0;
@@ -55,6 +58,57 @@ static void FailsForUnknownZone()
     var clock = new ClockDefinition("missing", "Missing", "missing");
 
     AssertThrows<TimeZoneNotFoundException>(() => service.GetReading(clock, DateTimeOffset.UtcNow));
+}
+
+static void RoundTripsSettings()
+{
+    WithTemporarySettingsPath(path =>
+    {
+        var store = new JsonClockSettingsStore(path);
+        var expected = new ClockSettings(false, false, 128.5, 642.25);
+
+        store.Save(expected);
+
+        AssertEqual(expected, store.Load());
+    });
+}
+
+static void UsesDefaultsWhenMissing()
+{
+    WithTemporarySettingsPath(path =>
+    {
+        var settings = new JsonClockSettingsStore(path).Load();
+
+        AssertEqual(ClockSettings.Default, settings);
+    });
+}
+
+static void UsesDefaultsWhenMalformed()
+{
+    WithTemporarySettingsPath(path =>
+    {
+        File.WriteAllText(path, "{ this is not valid JSON }");
+
+        var settings = new JsonClockSettingsStore(path).Load();
+
+        AssertEqual(ClockSettings.Default, settings);
+    });
+}
+
+static void WithTemporarySettingsPath(Action<string> test)
+{
+    var directory = Path.Combine(Environment.CurrentDirectory, ".test-data");
+    Directory.CreateDirectory(directory);
+    var path = Path.Combine(directory, $"desktop-clock-settings-{Guid.NewGuid():N}.json");
+    try
+    {
+        test(path);
+    }
+    finally
+    {
+        if (File.Exists(path)) File.Delete(path);
+        if (Directory.Exists(directory) && !Directory.EnumerateFileSystemEntries(directory).Any()) Directory.Delete(directory);
+    }
 }
 
 static void AssertEqual<T>(T expected, T actual)

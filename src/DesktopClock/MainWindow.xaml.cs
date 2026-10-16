@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -16,16 +17,21 @@ public partial class MainWindow : Window
 
     private readonly ObservableCollection<ClockDefinition> _clocks = [];
     private readonly ClockTimeService _timeService = new();
+    private readonly ISettingsStore _settingsStore = new JsonClockSettingsStore(GetSettingsPath());
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
     private MenuItem _showDateMenuItem = null!;
     private MenuItem _alwaysOnTopMenuItem = null!;
     private MenuItem _removeCityMenuItem = null!;
     private bool _showDate = true;
     private int _nextCatalogIndex = 1;
+    private ClockSettings _settings = ClockSettings.Default;
 
     public MainWindow()
     {
         InitializeComponent();
+        _settings = _settingsStore.Load();
+        _showDate = _settings.ShowDate;
+        Topmost = _settings.AlwaysOnTop;
         _clocks.Add(ClockCatalog.Default[0]);
         BuildContextMenu();
         _timer.Tick += Timer_Tick;
@@ -44,10 +50,15 @@ public partial class MainWindow : Window
         {
             _showDate = _showDateMenuItem.IsChecked;
             RenderClocks();
+            SaveSettings();
         };
 
         _alwaysOnTopMenuItem = new MenuItem { Header = "Always on top", IsCheckable = true, IsChecked = Topmost };
-        _alwaysOnTopMenuItem.Click += (_, _) => Topmost = _alwaysOnTopMenuItem.IsChecked;
+        _alwaysOnTopMenuItem.Click += (_, _) =>
+        {
+            Topmost = _alwaysOnTopMenuItem.IsChecked;
+            SaveSettings();
+        };
 
         _removeCityMenuItem = new MenuItem { Header = "Remove last city" };
         _removeCityMenuItem.Click += (_, _) => RemoveLastCity();
@@ -155,14 +166,24 @@ public partial class MainWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        Left = SystemParameters.WorkArea.Right - ActualWidth - 24;
-        Top = SystemParameters.WorkArea.Bottom - ActualHeight - 24;
+        if (HasVisibleSavedPosition())
+        {
+            Left = _settings.Left!.Value;
+            Top = _settings.Top!.Value;
+        }
+        else
+        {
+            Left = SystemParameters.WorkArea.Right - ActualWidth - 24;
+            Top = SystemParameters.WorkArea.Bottom - ActualHeight - 24;
+        }
+
         _timer.Start();
     }
 
     private void Window_Closed(object? sender, EventArgs e)
     {
         _timer.Stop();
+        SaveSettings();
     }
 
     private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -171,10 +192,38 @@ public partial class MainWindow : Window
         try
         {
             DragMove();
+            SaveSettings();
         }
         catch (InvalidOperationException)
         {
             // The mouse can be released before DragMove takes ownership.
         }
+    }
+
+    private bool HasVisibleSavedPosition()
+    {
+        if (!_settings.Left.HasValue || !_settings.Top.HasValue) return false;
+
+        var left = _settings.Left.Value;
+        var top = _settings.Top.Value;
+        var right = SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth;
+        var bottom = SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight;
+
+        return left < right && left + ActualWidth > SystemParameters.VirtualScreenLeft
+            && top < bottom && top + ActualHeight > SystemParameters.VirtualScreenTop;
+    }
+
+    private void SaveSettings()
+    {
+        double? left = double.IsNaN(Left) ? null : Left;
+        double? top = double.IsNaN(Top) ? null : Top;
+        _settings = new ClockSettings(_showDate, Topmost, left, top);
+        _settingsStore.Save(_settings);
+    }
+
+    private static string GetSettingsPath()
+    {
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        return Path.Combine(appData, "DesktopClock", "settings.json");
     }
 }

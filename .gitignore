@@ -11,3 +11,5 @@
 startup-error.txt
 startup-trace.txt
 publish/
+.build/
+.test-data/
