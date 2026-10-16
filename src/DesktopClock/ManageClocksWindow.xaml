@@ -1,0 +1,220 @@
+<Window x:Class="DesktopClock.ManageClocksWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Manage clocks"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        Background="#0D121D">
+  <Border Padding="18"
+          Background="#0D121D"
+          BorderBrush="#36FFFFFF"
+          BorderThickness="1"
+          CornerRadius="12">
+    <Grid MinWidth="340">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <TextBlock Text="Manage clocks"
+                 Foreground="#F5F7FB"
+                 FontSize="19"
+                 FontWeight="SemiBold" />
+      <TextBlock Grid.Row="1"
+                 Margin="0,5,0,14"
+                 Text="Choose the clocks and order them vertically."
+                 Foreground="#A6B0C2"
+                 FontSize="11" />
+
+      <ListBox x:Name="ClockList"
+               Grid.Row="2"
+               Height="190"
+               Background="#141B29"
+               BorderBrush="#2A3445"
+               Foreground="#F5F7FB"
+               AlternationCount="1"
+               SelectionChanged="ClockList_SelectionChanged">
+        <ListBox.ItemContainerStyle>
+          <Style TargetType="{x:Type ListBoxItem}">
+            <Setter Property="Background" Value="#141B29" />
+            <Setter Property="Foreground" Value="#F5F7FB" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Style.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#1E2A3C" />
+              </Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="#2D7168" />
+                <Setter Property="Foreground" Value="#F5F7FB" />
+              </Trigger>
+            </Style.Triggers>
+          </Style>
+        </ListBox.ItemContainerStyle>
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid Margin="3,5">
+              <Grid.RowDefinitions>
+                <RowDefinition />
+                <RowDefinition />
+              </Grid.RowDefinitions>
+              <TextBlock Text="{Binding City}"
+                         Foreground="#F5F7FB"
+                         FontWeight="SemiBold"
+                         FontSize="12" />
+              <TextBlock Grid.Row="1"
+                         Text="{Binding TimeZoneId}"
+                         Foreground="#8390A4"
+                         FontSize="9" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <Grid Grid.Row="3" Margin="0,12,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <ComboBox x:Name="CityPicker"
+                  MinWidth="200"
+                  Padding="7,4"
+                  Background="#141B29"
+                  BorderBrush="#2A3445"
+                  Foreground="#F5F7FB"
+                  SelectionChanged="CityPicker_SelectionChanged">
+          <ComboBox.Resources>
+            <Style TargetType="{x:Type ComboBoxItem}">
+              <Setter Property="Background" Value="#141B29" />
+              <Setter Property="Foreground" Value="#F5F7FB" />
+              <Setter Property="Padding" Value="8,6" />
+              <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+              <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                  <Setter Property="Background" Value="#2D7168" />
+                  <Setter Property="Foreground" Value="#F5F7FB" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                  <Setter Property="Background" Value="#2D7168" />
+                  <Setter Property="Foreground" Value="#F5F7FB" />
+                </Trigger>
+              </Style.Triggers>
+            </Style>
+          </ComboBox.Resources>
+          <ComboBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding City}"
+                         Foreground="#F5F7FB" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+          <ComboBox.Template>
+            <ControlTemplate TargetType="{x:Type ComboBox}">
+              <Grid>
+                <ToggleButton x:Name="ToggleButton"
+                              Background="{TemplateBinding Background}"
+                              BorderBrush="{TemplateBinding BorderBrush}"
+                              BorderThickness="{TemplateBinding BorderThickness}"
+                              Content="{TemplateBinding SelectionBoxItem}"
+                              ContentTemplate="{TemplateBinding ItemTemplate}"
+                              ContentStringFormat="{TemplateBinding ItemStringFormat}"
+                              Foreground="{TemplateBinding Foreground}"
+                              Focusable="False"
+                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                              Padding="{TemplateBinding Padding}"
+                              ClickMode="Press">
+                  <ToggleButton.Template>
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                      <Border Background="{TemplateBinding Background}"
+                              BorderBrush="{TemplateBinding BorderBrush}"
+                              BorderThickness="{TemplateBinding BorderThickness}"
+                              CornerRadius="3">
+                        <Grid>
+                          <ContentPresenter Margin="{TemplateBinding Padding}"
+                                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                            Content="{TemplateBinding Content}"
+                                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                                            ContentStringFormat="{TemplateBinding ContentStringFormat}"
+                                            TextElement.Foreground="{TemplateBinding Foreground}" />
+                          <Path Width="8"
+                                Height="5"
+                                Margin="0,0,9,0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Data="M 0 0 L 4 4 L 8 0 Z"
+                                Fill="{TemplateBinding Foreground}"
+                                Stretch="Fill" />
+                        </Grid>
+                      </Border>
+                    </ControlTemplate>
+                  </ToggleButton.Template>
+                </ToggleButton>
+
+                <Popup x:Name="PART_Popup"
+                       AllowsTransparency="True"
+                       Focusable="False"
+                       IsOpen="{TemplateBinding IsDropDownOpen}"
+                       Placement="Bottom"
+                       PopupAnimation="Fade"
+                       StaysOpen="False">
+                  <Border MinWidth="{TemplateBinding ActualWidth}"
+                          MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                          Background="#141B29"
+                          BorderBrush="#2A3445"
+                          BorderThickness="1"
+                          SnapsToDevicePixels="True">
+                    <ScrollViewer Padding="4"
+                                  CanContentScroll="True"
+                                  SnapsToDevicePixels="True">
+                      <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                    </ScrollViewer>
+                  </Border>
+                </Popup>
+              </Grid>
+            </ControlTemplate>
+          </ComboBox.Template>
+        </ComboBox>
+        <Button x:Name="AddCityButton"
+                Grid.Column="1"
+                Margin="8,0,0,0"
+                Padding="12,6"
+                Content="Add city"
+                Click="AddCity_Click" />
+      </Grid>
+
+      <StackPanel Grid.Row="4"
+                  Margin="0,12,0,0"
+                  Orientation="Horizontal">
+        <Button x:Name="MoveUpButton"
+                Padding="10,6"
+                Content="Move up"
+                Click="MoveUp_Click" />
+        <Button x:Name="MoveDownButton"
+                Margin="7,0,0,0"
+                Padding="10,6"
+                Content="Move down"
+                Click="MoveDown_Click" />
+        <Button x:Name="RemoveButton"
+                Margin="7,0,0,0"
+                Padding="10,6"
+                Content="Remove"
+                Click="Remove_Click" />
+        <Button Margin="28,0,0,0"
+                Padding="14,6"
+                Content="Done"
+                IsDefault="True"
+                Click="Done_Click" />
+        <Button Margin="7,0,0,0"
+                Padding="14,6"
+                Content="Cancel"
+                IsCancel="True"
+                Click="Cancel_Click" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</Window>

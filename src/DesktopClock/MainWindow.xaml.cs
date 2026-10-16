@@ -21,9 +21,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
     private MenuItem _showDateMenuItem = null!;
     private MenuItem _alwaysOnTopMenuItem = null!;
-    private MenuItem _removeCityMenuItem = null!;
     private bool _showDate = true;
-    private int _nextCatalogIndex = 1;
     private ClockSettings _settings = ClockSettings.Default;
 
     public MainWindow()
@@ -32,7 +30,13 @@ public partial class MainWindow : Window
         _settings = _settingsStore.Load();
         _showDate = _settings.ShowDate;
         Topmost = _settings.AlwaysOnTop;
-        _clocks.Add(ClockCatalog.Default[0]);
+        foreach (var clockId in _settings.ClockIds ?? [])
+        {
+            var clock = ClockCatalog.Find(clockId);
+            if (clock is not null && !_clocks.Contains(clock)) _clocks.Add(clock);
+        }
+
+        if (_clocks.Count == 0) _clocks.Add(ClockCatalog.Default[0]);
         BuildContextMenu();
         _timer.Tick += Timer_Tick;
         RenderClocks();
@@ -42,8 +46,8 @@ public partial class MainWindow : Window
     {
         var menu = new ContextMenu();
 
-        var addCity = new MenuItem { Header = "Add city" };
-        addCity.Click += (_, _) => AddNextCity();
+        var manageClocks = new MenuItem { Header = "Manage clocks..." };
+        manageClocks.Click += (_, _) => ManageClocks();
 
         _showDateMenuItem = new MenuItem { Header = "Show date", IsCheckable = true, IsChecked = _showDate };
         _showDateMenuItem.Click += (_, _) =>
@@ -60,17 +64,12 @@ public partial class MainWindow : Window
             SaveSettings();
         };
 
-        _removeCityMenuItem = new MenuItem { Header = "Remove last city" };
-        _removeCityMenuItem.Click += (_, _) => RemoveLastCity();
-
         var exit = new MenuItem { Header = "Exit" };
         exit.Click += (_, _) => Close();
 
-        menu.Items.Add(addCity);
+        menu.Items.Add(manageClocks);
         menu.Items.Add(_showDateMenuItem);
         menu.Items.Add(_alwaysOnTopMenuItem);
-        menu.Items.Add(new Separator());
-        menu.Items.Add(_removeCityMenuItem);
         menu.Items.Add(new Separator());
         menu.Items.Add(exit);
         ContextMenu = menu;
@@ -139,29 +138,23 @@ public partial class MainWindow : Window
             ClockStack.Children.Add(row);
         }
 
-        _removeCityMenuItem.IsEnabled = _clocks.Count > 1;
         _showDateMenuItem.IsChecked = _showDate;
         _alwaysOnTopMenuItem.IsChecked = Topmost;
     }
 
-    private void AddNextCity()
+    private void ManageClocks()
     {
-        while (_nextCatalogIndex < ClockCatalog.Default.Count && _clocks.Contains(ClockCatalog.Default[_nextCatalogIndex]))
+        var dialog = new ManageClocksWindow(_clocks.ToArray())
         {
-            _nextCatalogIndex++;
-        }
+            Owner = this,
+        };
 
-        if (_nextCatalogIndex >= ClockCatalog.Default.Count) return;
-        _clocks.Add(ClockCatalog.Default[_nextCatalogIndex]);
-        _nextCatalogIndex++;
-        RenderClocks();
-    }
+        if (dialog.ShowDialog() != true) return;
 
-    private void RemoveLastCity()
-    {
-        if (_clocks.Count <= 1) return;
-        _clocks.RemoveAt(_clocks.Count - 1);
+        _clocks.Clear();
+        foreach (var clock in dialog.SelectedClocks) _clocks.Add(clock);
         RenderClocks();
+        SaveSettings();
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -217,7 +210,7 @@ public partial class MainWindow : Window
     {
         double? left = double.IsNaN(Left) ? null : Left;
         double? top = double.IsNaN(Top) ? null : Top;
-        _settings = new ClockSettings(_showDate, Topmost, left, top);
+        _settings = new ClockSettings(_showDate, Topmost, left, top, _clocks.Select(clock => clock.Id).ToArray());
         _settingsStore.Save(_settings);
     }
 

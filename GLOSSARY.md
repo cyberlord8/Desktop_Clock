@@ -39,3 +39,7 @@ _Avoid_: Screensaver widget, idle mode
 **Clock reading**:
 The formatted local time and date produced for a clock at a particular instant.
 _Avoid_: Clock value, timestamp
+
+**Clock order**:
+The user-defined vertical sequence in which clocks appear in the widget.
+_Avoid_: Priority, sort order

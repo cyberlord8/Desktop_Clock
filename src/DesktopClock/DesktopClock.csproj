@@ -13,5 +13,6 @@
     <ProjectReference Include="..\DesktopClock.Core\DesktopClock.Core.csproj" />
     <ApplicationDefinition Include="App.xaml" />
     <Page Include="MainWindow.xaml" />
+    <Page Include="ManageClocksWindow.xaml" />
   </ItemGroup>
 </Project>

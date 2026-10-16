@@ -65,11 +65,16 @@ static void RoundTripsSettings()
     WithTemporarySettingsPath(path =>
     {
         var store = new JsonClockSettingsStore(path);
-        var expected = new ClockSettings(false, false, 128.5, 642.25);
+        var expected = new ClockSettings(false, false, 128.5, 642.25, ["phoenix", "tokyo"]);
 
         store.Save(expected);
 
-        AssertEqual(expected, store.Load());
+        var actual = store.Load();
+        AssertEqual(expected.ShowDate, actual.ShowDate);
+        AssertEqual(expected.AlwaysOnTop, actual.AlwaysOnTop);
+        AssertEqual(expected.Left, actual.Left);
+        AssertEqual(expected.Top, actual.Top);
+        AssertSequenceEqual(expected.ClockIds, actual.ClockIds);
     });
 }
 
@@ -79,7 +84,9 @@ static void UsesDefaultsWhenMissing()
     {
         var settings = new JsonClockSettingsStore(path).Load();
 
-        AssertEqual(ClockSettings.Default, settings);
+        AssertEqual(ClockSettings.Default.ShowDate, settings.ShowDate);
+        AssertEqual(ClockSettings.Default.AlwaysOnTop, settings.AlwaysOnTop);
+        AssertSequenceEqual(ClockSettings.Default.ClockIds, settings.ClockIds);
     });
 }
 
@@ -91,7 +98,9 @@ static void UsesDefaultsWhenMalformed()
 
         var settings = new JsonClockSettingsStore(path).Load();
 
-        AssertEqual(ClockSettings.Default, settings);
+        AssertEqual(ClockSettings.Default.ShowDate, settings.ShowDate);
+        AssertEqual(ClockSettings.Default.AlwaysOnTop, settings.AlwaysOnTop);
+        AssertSequenceEqual(ClockSettings.Default.ClockIds, settings.ClockIds);
     });
 }
 
@@ -116,6 +125,14 @@ static void AssertEqual<T>(T expected, T actual)
     if (!EqualityComparer<T>.Default.Equals(expected, actual))
     {
         throw new InvalidOperationException($"Expected '{expected}', got '{actual}'.");
+    }
+}
+
+static void AssertSequenceEqual<T>(IEnumerable<T> expected, IEnumerable<T> actual)
+{
+    if (!expected.SequenceEqual(actual))
+    {
+        throw new InvalidOperationException($"Expected '{string.Join(", ", expected)}', got '{string.Join(", ", actual)}'.");
     }
 }
 

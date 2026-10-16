@@ -10,4 +10,7 @@ public static class ClockCatalog
         new("new-york", "New York", "Eastern Standard Time"),
         new("sydney", "Sydney", "AUS Eastern Standard Time"),
     ];
+
+    public static ClockDefinition? Find(string id) =>
+        Default.FirstOrDefault(clock => string.Equals(clock.Id, id, StringComparison.OrdinalIgnoreCase));
 }
