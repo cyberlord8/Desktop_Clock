@@ -1,0 +1,411 @@
+<!doctype html>
+<!--
+  PROTOTYPE QUESTION:
+  Which desktop-clock layout makes a single local clock and a vertical clock stack
+  easiest to read while keeping date and always-on-top controls discoverable?
+
+  This file is intentionally throwaway. It uses in-memory state and fake controls
+  for OS-specific behavior; it is not production application code.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Desktop Clock — UI Prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f5f7fb;
+      --muted: #97a2b7;
+      --faint: #65728a;
+      --panel: rgba(22, 27, 40, .84);
+      --panel-strong: #1b2232;
+      --line: rgba(255, 255, 255, .11);
+      --accent: #7de2cf;
+      --accent-strong: #36c5aa;
+      --warm: #f3c978;
+      --danger: #ed8c9a;
+      --shadow: 0 26px 90px rgba(0, 0, 0, .42);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; }
+    body {
+      min-width: 320px;
+      color: var(--ink);
+      background: #0b0f18;
+      overflow-x: hidden;
+      transition: background .35s ease;
+    }
+    button { font: inherit; }
+    button, [role="button"] { cursor: pointer; }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .muted { color: var(--muted); }
+    .faint { color: var(--faint); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 26px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255,255,255,.035);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .03em;
+    }
+    .badge.on { color: var(--accent); border-color: rgba(125,226,207,.32); background: rgba(125,226,207,.1); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .icon-button, .text-button, .chip-button {
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: rgba(255,255,255,.045);
+      transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease;
+    }
+    .icon-button:hover, .text-button:hover, .chip-button:hover { color: var(--ink); background: rgba(255,255,255,.095); border-color: rgba(255,255,255,.22); }
+    .icon-button:active, .text-button:active, .chip-button:active { transform: translateY(1px); }
+    .icon-button { width: 34px; height: 34px; border-radius: 11px; }
+    .text-button { padding: 9px 13px; border-radius: 11px; font-size: 12px; font-weight: 750; }
+    .text-button.primary { color: #0e2927; background: var(--accent); border-color: var(--accent); }
+    .text-button.primary:hover { color: #0e2927; background: #a4f0e2; }
+    .chip-button { padding: 7px 10px; border-radius: 10px; font-size: 12px; }
+    .chip-button.active { color: #0e2927; background: var(--accent); border-color: var(--accent); }
+
+    /* Variant A: focused, spacious canvas. */
+    body.variant-a { background: radial-gradient(circle at 50% 33%, #273349 0, #111827 28%, #0b0f18 67%); }
+    .variant-a .app { min-height: 100vh; padding: 28px clamp(20px, 5vw, 72px) 126px; }
+    .a-topbar, .a-footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+    .brand { display: flex; align-items: center; gap: 11px; }
+    .brand-mark { display: grid; width: 31px; height: 31px; place-items: center; border: 1px solid rgba(125,226,207,.35); border-radius: 10px; color: var(--accent); background: rgba(125,226,207,.1); font-weight: 900; }
+    .brand-name { font-size: 13px; font-weight: 800; letter-spacing: .04em; }
+    .a-actions, .a-status { display: flex; align-items: center; gap: 8px; }
+    .a-hero { display: grid; min-height: 67vh; place-items: center; padding: 64px 0 28px; text-align: center; }
+    .hero-city { margin: 0; color: var(--muted); font-size: clamp(16px, 2vw, 21px); font-weight: 650; }
+    .hero-time { margin: 18px 0 12px; color: var(--ink); font-size: clamp(76px, 15vw, 178px); font-weight: 260; letter-spacing: -.09em; line-height: .86; }
+    .hero-date { min-height: 24px; color: var(--accent); font-size: 14px; font-weight: 650; letter-spacing: .03em; }
+    .a-subline { display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 22px; color: var(--faint); font-size: 12px; }
+    .a-subline::before, .a-subline::after { width: 34px; height: 1px; background: var(--line); content: ""; }
+    .a-footer { align-items: flex-end; }
+    .a-stack { display: flex; flex-wrap: wrap; gap: 10px; }
+    .a-clock-pill { min-width: 136px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(14,19,30,.56); text-align: left; }
+    .a-clock-pill.active { border-color: rgba(125,226,207,.5); box-shadow: 0 0 0 1px rgba(125,226,207,.12) inset; }
+    .a-clock-pill .city { font-size: 12px; font-weight: 750; }
+    .a-clock-pill .time { margin-top: 7px; color: var(--accent); font-size: 18px; }
+    .a-clock-pill .zone { margin-top: 4px; color: var(--faint); font-size: 10px; }
+    .a-footer-controls { display: flex; align-items: center; gap: 8px; }
+
+    /* Variant B: vertical stack with a selected detail view. */
+    body.variant-b { background: #e8edf1; color: #182230; color-scheme: light; --ink: #182230; --muted: #667386; --faint: #9ca8b5; --panel: #fff; --panel-strong: #f4f7f8; --line: #dce3e7; --accent: #168a79; --accent-strong: #0e6e62; --shadow: 0 20px 65px rgba(26,48,60,.16); }
+    .variant-b .app { display: grid; min-height: 100vh; grid-template-columns: minmax(230px, 290px) minmax(0, 1fr); padding-bottom: 112px; }
+    .b-sidebar { display: flex; flex-direction: column; padding: 28px 20px 30px; border-right: 1px solid var(--line); background: rgba(255,255,255,.6); }
+    .b-sidebar-top, .b-content-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .b-sidebar h2 { margin: 34px 0 5px; font-size: 25px; letter-spacing: -.04em; }
+    .b-sidebar p { margin: 0; font-size: 12px; }
+    .b-list { display: grid; gap: 9px; margin: 28px 0; }
+    .b-clock { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; width: 100%; padding: 15px; border: 1px solid transparent; border-radius: 16px; color: var(--ink); background: transparent; text-align: left; }
+    .b-clock:hover { background: #f1f5f5; }
+    .b-clock.active { border-color: rgba(22,138,121,.3); background: #dff3ef; }
+    .b-clock .city { font-size: 13px; font-weight: 800; }
+    .b-clock .time { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--accent-strong); font-size: 19px; }
+    .b-clock .zone { color: var(--muted); font-size: 10px; }
+    .b-clock .date { grid-column: 1 / -1; margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .b-sidebar-bottom { display: grid; gap: 9px; margin-top: auto; }
+    .b-content { padding: 28px clamp(28px, 6vw, 90px); }
+    .b-content-top { color: var(--muted); font-size: 12px; }
+    .b-stage { display: grid; min-height: 70vh; place-items: center; align-content: center; padding: 50px 0; text-align: center; }
+    .b-stage .eyebrow { color: var(--accent-strong); }
+    .b-stage-city { margin: 0; font-size: clamp(22px, 4vw, 44px); letter-spacing: -.05em; }
+    .b-stage-time { margin: 28px 0 16px; color: var(--accent-strong); font-size: clamp(80px, 16vw, 190px); font-weight: 220; letter-spacing: -.11em; line-height: .8; }
+    .b-stage-date { min-height: 24px; color: var(--muted); font-size: 15px; }
+    .b-stage-note { max-width: 420px; margin: 50px auto 0; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+    /* Variant C: compact edge dock. */
+    body.variant-c { background: linear-gradient(115deg, #171426, #0e1320 48%, #111925); }
+    .variant-c .app { min-height: 100vh; padding: 30px 30px 125px; }
+    .c-shell { display: grid; min-height: calc(100vh - 155px); grid-template-columns: minmax(0, 1fr) minmax(280px, 375px); gap: clamp(26px, 6vw, 96px); align-items: center; max-width: 1220px; margin: 0 auto; }
+    .c-copy { padding: 30px 0; }
+    .c-copy h1 { max-width: 620px; margin: 0; font-size: clamp(48px, 8vw, 106px); font-weight: 280; letter-spacing: -.09em; line-height: .88; }
+    .c-copy p { max-width: 420px; margin: 27px 0 0; color: var(--muted); font-size: 15px; line-height: 1.65; }
+    .c-copy .c-features { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 30px; }
+    .c-dock { align-self: stretch; display: flex; flex-direction: column; padding: 20px; border: 1px solid rgba(255,255,255,.12); border-radius: 28px; background: linear-gradient(150deg, rgba(42,49,74,.92), rgba(18,22,37,.94)); box-shadow: var(--shadow); backdrop-filter: blur(22px); }
+    .c-dock-top, .c-dock-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .c-dock-title { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .c-clock-list { display: grid; gap: 10px; margin: 23px 0; }
+    .c-clock { display: grid; grid-template-columns: 42px 1fr auto; gap: 11px; align-items: center; padding: 14px 12px; border: 1px solid transparent; border-radius: 17px; color: var(--ink); background: rgba(255,255,255,.045); text-align: left; }
+    .c-clock:hover { background: rgba(255,255,255,.09); }
+    .c-clock.active { border-color: rgba(125,226,207,.42); background: rgba(125,226,207,.11); }
+    .c-clock-planet { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 14px; color: var(--accent); background: rgba(125,226,207,.1); font-size: 18px; }
+    .c-clock .city { font-size: 13px; font-weight: 800; }
+    .c-clock .zone { margin-top: 4px; color: var(--muted); font-size: 10px; }
+    .c-clock .time { color: var(--accent); font-size: 16px; }
+    .c-clock .date { grid-column: 2 / -1; margin-top: -2px; color: var(--muted); font-size: 10px; }
+    .c-dock-footer { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--line); }
+    .c-dock-footer small { color: var(--faint); font-size: 10px; }
+
+    .empty { padding: 24px 0; color: var(--muted); font-size: 12px; text-align: center; }
+    .prototype-switcher { position: fixed; z-index: 10; right: 50%; bottom: 22px; display: flex; align-items: center; gap: 8px; transform: translateX(50%); padding: 7px; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; color: #f5f7fb; background: rgba(19,24,36,.92); box-shadow: 0 14px 40px rgba(0,0,0,.35); backdrop-filter: blur(16px); }
+    .prototype-switcher button { width: 33px; height: 30px; border: 0; border-radius: 10px; color: #9aa5b8; background: transparent; }
+    .prototype-switcher button:hover { color: #fff; background: rgba(255,255,255,.1); }
+    .prototype-switcher .variant-label { min-width: 156px; padding: 0 8px; font-size: 11px; font-weight: 800; text-align: center; }
+    .prototype-switcher .variant-label span { display: block; margin-top: 3px; color: #8995aa; font-size: 10px; font-weight: 500; }
+
+    @media (max-width: 720px) {
+      .variant-b .app { display: block; }
+      .b-sidebar { border-right: 0; border-bottom: 1px solid var(--line); }
+      .b-list { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+      .b-sidebar-bottom { grid-template-columns: 1fr 1fr; }
+      .b-content { padding-top: 16px; }
+      .c-shell { grid-template-columns: 1fr; }
+      .c-copy { padding-top: 25px; }
+      .c-dock { min-height: 480px; }
+      .a-footer { align-items: stretch; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main id="app"></main>
+  <nav class="prototype-switcher" aria-label="Prototype variants">
+    <button type="button" data-action="previous" aria-label="Previous variant">←</button>
+    <div class="variant-label" id="variant-label"></div>
+    <button type="button" data-action="next" aria-label="Next variant">→</button>
+  </nav>
+
+  <script>
+    const variants = {
+      A: { name: "Focus canvas", bodyClass: "variant-a" },
+      B: { name: "Vertical stack", bodyClass: "variant-b" },
+      C: { name: "Edge dock", bodyClass: "variant-c" },
+    };
+
+    const candidates = [
+      { city: "London", zone: "Europe/London", zoneLabel: "GMT / BST" },
+      { city: "Tokyo", zone: "Asia/Tokyo", zoneLabel: "JST" },
+      { city: "New York", zone: "America/New_York", zoneLabel: "ET" },
+      { city: "Sydney", zone: "Australia/Sydney", zoneLabel: "AEDT" },
+    ];
+
+    const state = {
+      showDate: true,
+      alwaysOnTop: false,
+      selectedId: "phoenix",
+      nextId: 1,
+      clocks: [
+        { id: "phoenix", city: "Phoenix", zone: "America/Phoenix", zoneLabel: "MST · local" },
+        { id: "london", city: "London", zone: "Europe/London", zoneLabel: "GMT / BST" },
+        { id: "tokyo", city: "Tokyo", zone: "Asia/Tokyo", zoneLabel: "JST" },
+      ],
+    };
+
+    function currentVariant() {
+      const value = new URLSearchParams(window.location.search).get("variant");
+      return variants[value] ? value : "A";
+    }
+
+    function clockTime(clock) {
+      return new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: clock.zone,
+      }).format(new Date());
+    }
+
+    function clockDate(clock) {
+      return new Intl.DateTimeFormat(undefined, {
+        weekday: "long", month: "long", day: "numeric", timeZone: clock.zone,
+      }).format(new Date());
+    }
+
+    function shortDate(clock) {
+      return new Intl.DateTimeFormat(undefined, {
+        month: "short", day: "numeric", timeZone: clock.zone,
+      }).format(new Date());
+    }
+
+    function getSelectedClock() {
+      return state.clocks.find((clock) => clock.id === state.selectedId) || state.clocks[0];
+    }
+
+    function dateMarkup(clock, className = "date") {
+      return state.showDate ? `<div class="${className}">${clockDate(clock)}</div>` : `<div class="${className}"></div>`;
+    }
+
+    function controlsMarkup() {
+      return `
+        <button class="text-button ${state.alwaysOnTop ? "primary" : ""}" data-action="toggle-top">
+          ${state.alwaysOnTop ? "✓ Always on top" : "Keep on top"}
+        </button>
+        <button class="text-button ${state.showDate ? "primary" : ""}" data-action="toggle-date">
+          ${state.showDate ? "✓ Date shown" : "Show date"}
+        </button>`;
+    }
+
+    function addClock() {
+      const existingZones = new Set(state.clocks.map((clock) => clock.zone));
+      const next = candidates.find((candidate) => !existingZones.has(candidate.zone));
+      if (!next) return;
+      state.clocks.push({ ...next, id: `clock-${state.nextId++}` });
+      render();
+    }
+
+    function selectClock(id) {
+      if (state.clocks.some((clock) => clock.id === id)) {
+        state.selectedId = id;
+        render();
+      }
+    }
+
+    function removeClock(id) {
+      if (state.clocks.length <= 1) return;
+      state.clocks = state.clocks.filter((clock) => clock.id !== id);
+      if (!state.clocks.some((clock) => clock.id === state.selectedId)) state.selectedId = state.clocks[0].id;
+      render();
+    }
+
+    function clockPill(clock) {
+      return `
+        <button class="a-clock-pill ${clock.id === state.selectedId ? "active" : ""}" data-action="select" data-id="${clock.id}">
+          <div class="city">${clock.city}</div>
+          <div class="time mono">${clockTime(clock)}</div>
+          <div class="zone">${clock.zoneLabel}</div>
+        </button>`;
+    }
+
+    function variantA() {
+      const selected = getSelectedClock();
+      return `
+        <div class="app">
+          <header class="a-topbar">
+            <div class="brand"><div class="brand-mark">◷</div><div class="brand-name">DESKLINE</div></div>
+            <div class="a-actions">${controlsMarkup()}<button class="icon-button" data-action="add" aria-label="Add clock">＋</button></div>
+          </header>
+          <section class="a-hero">
+            <div>
+              <p class="eyebrow">${selected.zoneLabel}</p>
+              <p class="hero-city">${selected.city}</p>
+              <div class="hero-time mono">${clockTime(selected)}</div>
+              <div class="hero-date">${state.showDate ? clockDate(selected) : ""}</div>
+              <div class="a-subline">Local time, quietly visible</div>
+            </div>
+          </section>
+          <footer class="a-footer">
+            <div class="a-stack">${state.clocks.map(clockPill).join("")}</div>
+            <div class="a-footer-controls"><span class="badge ${state.alwaysOnTop ? "on" : ""}"><span class="dot"></span>${state.alwaysOnTop ? "On top" : "Window mode"}</span><button class="text-button" data-action="add">＋ Add city</button></div>
+          </footer>
+        </div>`;
+    }
+
+    function verticalClock(clock) {
+      return `
+        <button class="b-clock ${clock.id === state.selectedId ? "active" : ""}" data-action="select" data-id="${clock.id}">
+          <span class="city">${clock.city}</span>
+          <span class="time mono">${clockTime(clock)}</span>
+          <span class="zone">${clock.zoneLabel}</span>
+          ${state.showDate ? `<span class="date">${shortDate(clock)}</span>` : ""}
+        </button>`;
+    }
+
+    function variantB() {
+      const selected = getSelectedClock();
+      return `
+        <div class="app">
+          <aside class="b-sidebar">
+            <div class="b-sidebar-top"><div class="brand"><div class="brand-mark">◷</div><div class="brand-name">DESKLINE</div></div><button class="icon-button" data-action="add" aria-label="Add clock">＋</button></div>
+            <h2>My clocks</h2><p class="muted">A calm view of your world.</p>
+            <div class="b-list">${state.clocks.map(verticalClock).join("")}</div>
+            <div class="b-sidebar-bottom">${controlsMarkup()}<button class="text-button" data-action="add">＋ Add another city</button></div>
+          </aside>
+          <section class="b-content">
+            <div class="b-content-top"><span>DESKTOP CLOCK / PROTOTYPE</span><span class="badge ${state.alwaysOnTop ? "on" : ""}"><span class="dot"></span>${state.alwaysOnTop ? "Always on top" : "Floating window"}</span></div>
+            <div class="b-stage">
+              <p class="eyebrow">${selected.zoneLabel}</p>
+              <h1 class="b-stage-city">${selected.city}</h1>
+              <div class="b-stage-time mono">${clockTime(selected)}</div>
+              <div class="b-stage-date">${state.showDate ? clockDate(selected) : ""}</div>
+              <p class="b-stage-note">The stack keeps every city one click away, while the large centre view gives the selected clock room to breathe.</p>
+            </div>
+          </section>
+        </div>`;
+    }
+
+    function dockClock(clock, index) {
+      return `
+        <button class="c-clock ${clock.id === state.selectedId ? "active" : ""}" data-action="select" data-id="${clock.id}">
+          <span class="c-clock-planet">${["◉", "◌", "◍", "◒", "◈"][index % 5]}</span>
+          <span><span class="city">${clock.city}</span><span class="zone">${clock.zoneLabel}</span></span>
+          <span class="time mono">${clockTime(clock)}</span>
+          ${state.showDate ? `<span class="date">${shortDate(clock)}</span>` : ""}
+        </button>`;
+    }
+
+    function variantC() {
+      const selected = getSelectedClock();
+      return `
+        <div class="app">
+          <div class="c-shell">
+            <section class="c-copy">
+              <p class="eyebrow">A quiet utility for busy screens</p>
+              <h1>Time,<br>within reach.</h1>
+              <p>Keep a few places visible without opening another app. The dock stays compact, readable, and ready to move out of the way.</p>
+              <div class="c-features"><span class="badge ${state.showDate ? "on" : ""}"><span class="dot"></span>${state.showDate ? "Date visible" : "Time only"}</span><span class="badge ${state.alwaysOnTop ? "on" : ""}"><span class="dot"></span>${state.alwaysOnTop ? "Pinned above windows" : "Normal window"}</span></div>
+            </section>
+            <aside class="c-dock">
+              <div class="c-dock-top"><span class="c-dock-title">Clock stack</span><div><button class="icon-button" data-action="toggle-date" aria-label="Toggle date">${state.showDate ? "☼" : "·"}</button><button class="icon-button" data-action="add" aria-label="Add clock">＋</button></div></div>
+              <div class="c-clock-list">${state.clocks.map(dockClock).join("")}</div>
+              <div class="c-dock-footer"><small>${selected.city} selected</small><button class="text-button ${state.alwaysOnTop ? "primary" : ""}" data-action="toggle-top">${state.alwaysOnTop ? "✓ On top" : "Keep on top"}</button></div>
+            </aside>
+          </div>
+        </div>`;
+    }
+
+    function setVariant(direction) {
+      const keys = Object.keys(variants);
+      const current = keys.indexOf(currentVariant());
+      const next = keys[(current + direction + keys.length) % keys.length];
+      const url = new URL(window.location.href);
+      url.searchParams.set("variant", next);
+      window.history.replaceState({}, "", url);
+      render();
+    }
+
+    function render() {
+      const key = currentVariant();
+      const variant = variants[key];
+      document.body.className = variant.bodyClass;
+      document.getElementById("app").innerHTML = key === "A" ? variantA() : key === "B" ? variantB() : variantC();
+      document.getElementById("variant-label").innerHTML = `${key}<span>${variant.name}</span>`;
+    }
+
+    document.addEventListener("click", (event) => {
+      const target = event.target.closest("[data-action]");
+      if (!target) return;
+      const action = target.dataset.action;
+      if (action === "previous") setVariant(-1);
+      if (action === "next") setVariant(1);
+      if (action === "toggle-date") { state.showDate = !state.showDate; render(); }
+      if (action === "toggle-top") { state.alwaysOnTop = !state.alwaysOnTop; render(); }
+      if (action === "add") addClock();
+      if (action === "select") selectClock(target.dataset.id);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || document.activeElement?.isContentEditable) return;
+      if (event.key === "ArrowLeft") setVariant(-1);
+      if (event.key === "ArrowRight") setVariant(1);
+    });
+
+    render();
+    window.setInterval(render, 1000);
+  </script>
+</body>
+</html>

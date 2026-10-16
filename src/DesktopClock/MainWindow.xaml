@@ -1,0 +1,24 @@
+<Window x:Class="DesktopClock.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Desktop Clock"
+        ShowInTaskbar="False"
+        WindowStartupLocation="Manual"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        SizeToContent="WidthAndHeight"
+        Loaded="Window_Loaded"
+        Closed="Window_Closed"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+  <Border x:Name="WidgetSurface"
+          Padding="10,8"
+          CornerRadius="14"
+          Background="#D90D121D"
+          BorderBrush="#36FFFFFF"
+          BorderThickness="1">
+    <StackPanel x:Name="ClockStack" />
+  </Border>
+</Window>

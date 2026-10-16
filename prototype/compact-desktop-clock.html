@@ -1,0 +1,247 @@
+<!doctype html>
+<!--
+  PROTOTYPE QUESTION:
+  Can a tiny clock stay readable and configurable without becoming a desktop
+  dashboard? Screen-saver mode is intentionally a separate host around the same
+  clock tiles.
+
+  This is throwaway prototype code. State is in memory and always-on-top is
+  represented visually; the real app will use native window behavior.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Desktop Clock — Compact Prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f5f7fb;
+      --muted: #a6b0c2;
+      --faint: #738097;
+      --line: rgba(255,255,255,.14);
+      --accent: #83e5d1;
+      --accent-dim: rgba(131,229,209,.13);
+      --chrome: rgba(15, 20, 31, .82);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; }
+    body { min-width: 320px; overflow: hidden; background: #0b1019; color: var(--ink); }
+    button { font: inherit; cursor: pointer; }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .mono { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+    .desktop { position: relative; min-height: 100vh; overflow: hidden; background: radial-gradient(circle at 30% 20%, #19243a, #0e1420 42%, #0a0e16 100%); }
+    .desktop::after { position: absolute; inset: 0; opacity: .18; pointer-events: none; content: ""; background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px); background-size: 44px 44px; mask-image: linear-gradient(to bottom, black, transparent 75%); }
+    .desktop-label { position: absolute; top: 22px; left: 25px; color: rgba(255,255,255,.28); font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+
+    /* A: one tiny pill, optimized for a single clock. */
+    .widget-a { position: absolute; width: 132px; padding: 10px 12px 9px; border: 1px solid rgba(255,255,255,.19); border-radius: 14px; background: rgba(13,18,29,.78); box-shadow: 0 12px 40px rgba(0,0,0,.34); backdrop-filter: blur(16px); user-select: none; }
+    .widget-a:hover { border-color: rgba(131,229,209,.5); }
+    .widget-a .widget-top, .widget-b .widget-top, .widget-c .widget-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .widget-a .city { overflow: hidden; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .09em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+    .widget-a .time { margin-top: 4px; font-size: 25px; font-weight: 330; letter-spacing: -.07em; line-height: 1; }
+    .widget-a .date { min-height: 14px; margin-top: 6px; color: var(--accent); font-size: 9px; }
+
+    /* B: the smallest useful vertical clock stack. */
+    .widget-b { position: absolute; width: 158px; padding: 9px; border: 1px solid rgba(255,255,255,.17); border-radius: 13px; background: rgba(13,18,29,.78); box-shadow: 0 12px 40px rgba(0,0,0,.34); backdrop-filter: blur(16px); user-select: none; }
+    .widget-b .widget-heading { color: var(--muted); font-size: 9px; font-weight: 850; letter-spacing: .13em; text-transform: uppercase; }
+    .widget-b .stack { display: grid; gap: 2px; margin-top: 7px; }
+    .widget-b .row { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; padding: 7px 6px; border-radius: 8px; }
+    .widget-b .row.selected { background: var(--accent-dim); }
+    .widget-b .city { overflow: hidden; color: var(--muted); font-size: 10px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+    .widget-b .time { color: var(--accent); font-size: 14px; letter-spacing: -.05em; }
+    .widget-b .date { grid-column: 1 / -1; margin-top: -2px; color: var(--faint); font-size: 8px; }
+
+    /* C: a frameless, low-distraction text rail. */
+    .widget-c { position: absolute; width: 145px; padding: 3px 5px; border-left: 1px solid rgba(131,229,209,.5); user-select: none; }
+    .widget-c .stack { display: grid; gap: 9px; }
+    .widget-c .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: baseline; padding-left: 10px; }
+    .widget-c .city { color: var(--muted); font-size: 10px; font-weight: 750; }
+    .widget-c .time { font-size: 14px; letter-spacing: -.05em; }
+    .widget-c .date { grid-column: 1 / -1; margin-top: -6px; color: var(--faint); font-size: 8px; }
+
+    .drag-hint { position: absolute; bottom: 24px; left: 50%; color: rgba(255,255,255,.25); font-size: 10px; transform: translateX(-50%); }
+    .drag-hint kbd { padding: 3px 5px; border: 1px solid rgba(255,255,255,.14); border-radius: 5px; color: rgba(255,255,255,.42); background: rgba(255,255,255,.05); font-size: 9px; }
+
+    /* Screen-saver mode: the same tiny tiles move slowly across the screen. */
+    .screensaver { position: relative; min-height: 100vh; overflow: hidden; background: #020305; }
+    .screensaver .saver-note { position: absolute; z-index: 2; top: 50%; left: 50%; color: rgba(255,255,255,.14); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; transform: translate(-50%, -50%); }
+    .saver-clock { position: absolute; z-index: 1; width: 148px; padding: 11px 13px; border: 1px solid rgba(255,255,255,.14); border-radius: 13px; color: rgba(245,247,251,.88); background: rgba(12,16,24,.75); box-shadow: 0 10px 35px rgba(0,0,0,.5); animation: drift 42s ease-in-out infinite alternate; animation-delay: var(--delay); }
+    .saver-clock:nth-of-type(3n) { animation-duration: 51s; }
+    .saver-clock:nth-of-type(4n) { animation-direction: alternate-reverse; animation-duration: 47s; }
+    .saver-clock .city { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .saver-clock .time { margin-top: 5px; font-size: 24px; font-weight: 300; letter-spacing: -.07em; }
+    .saver-clock .date { min-height: 13px; margin-top: 4px; color: var(--accent); font-size: 9px; }
+    @keyframes drift {
+      0% { transform: translate3d(0, 0, 0); }
+      100% { transform: translate3d(var(--dx), var(--dy), 0); }
+    }
+
+    .prototype-bar { position: fixed; z-index: 10; right: 50%; bottom: 18px; display: flex; align-items: center; gap: 7px; padding: 6px; border: 1px solid rgba(255,255,255,.14); border-radius: 13px; background: rgba(15,20,31,.94); box-shadow: 0 13px 38px rgba(0,0,0,.38); transform: translateX(50%); }
+    .prototype-bar button { min-width: 29px; height: 28px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font-size: 11px; font-weight: 800; }
+    .prototype-bar button:hover, .prototype-bar button.active { color: #071412; background: var(--accent); }
+    .prototype-bar .label { min-width: 112px; color: var(--ink); font-size: 10px; font-weight: 800; text-align: center; }
+    .prototype-bar .label span { display: block; margin-top: 2px; color: var(--faint); font-size: 9px; font-weight: 500; }
+    .prototype-bar .mode { min-width: 68px; border-left: 1px solid var(--line); border-radius: 0; color: var(--accent); font-size: 9px; }
+
+    .widget-actions { position: absolute; right: 7px; bottom: -38px; display: flex; gap: 4px; opacity: 0; pointer-events: none; transition: opacity .18s ease; }
+    .widget:hover .widget-actions { opacity: 1; pointer-events: auto; }
+    .widget-actions button { width: 25px; height: 25px; padding: 0; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); background: var(--chrome); font-size: 11px; }
+    .widget-actions button:hover { color: var(--ink); border-color: rgba(131,229,209,.5); }
+    .top-indicator { width: 5px; height: 5px; border-radius: 50%; background: var(--faint); }
+    .top-indicator.on { background: var(--accent); box-shadow: 0 0 9px var(--accent); }
+    @media (max-width: 560px) { .prototype-bar .label { min-width: 84px; } .drag-hint { display: none; } }
+  </style>
+</head>
+<body>
+  <main id="app"></main>
+  <nav class="prototype-bar" aria-label="Compact prototype controls">
+    <button type="button" data-action="previous" aria-label="Previous layout">←</button>
+    <button type="button" data-variant="A">A</button>
+    <button type="button" data-variant="B">B</button>
+    <button type="button" data-variant="C">C</button>
+    <button type="button" data-action="next" aria-label="Next layout">→</button>
+    <div class="label" id="variant-label"></div>
+    <button type="button" class="mode" data-action="mode"></button>
+  </nav>
+
+  <script>
+    const variants = {
+      A: { name: "Micro pill" },
+      B: { name: "Mini stack" },
+      C: { name: "Text rail" },
+    };
+    const cities = [
+      { city: "Phoenix", zone: "America/Phoenix", zoneLabel: "MST" },
+      { city: "London", zone: "Europe/London", zoneLabel: "GMT / BST" },
+      { city: "Tokyo", zone: "Asia/Tokyo", zoneLabel: "JST" },
+      { city: "New York", zone: "America/New_York", zoneLabel: "ET" },
+      { city: "Sydney", zone: "Australia/Sydney", zoneLabel: "AEDT" },
+    ];
+    const state = {
+      variant: new URLSearchParams(location.search).get("variant") in variants ? new URLSearchParams(location.search).get("variant") : "A",
+      mode: new URLSearchParams(location.search).get("mode") === "saver" ? "saver" : "widget",
+      showDate: true,
+      alwaysOnTop: true,
+      nextId: 1,
+      position: { x: null, y: null },
+      clocks: [
+        { id: "phoenix", ...cities[0] },
+        { id: "london", ...cities[1] },
+        { id: "tokyo", ...cities[2] },
+      ],
+    };
+
+    function timeFor(clock) {
+      return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: clock.zone }).format(new Date());
+    }
+    function dateFor(clock) {
+      return new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: clock.zone }).format(new Date());
+    }
+    function dateMarkup(clock) { return state.showDate ? `<div class="date">${dateFor(clock)}</div>` : `<div class="date"></div>`; }
+    function topIndicator() { return `<span class="top-indicator ${state.alwaysOnTop ? "on" : ""}" title="${state.alwaysOnTop ? "Always on top" : "Normal window"}"></span>`; }
+    function widgetActions() {
+      return `<div class="widget-actions"><button data-action="toggle-date" title="Toggle date">☼</button><button data-action="toggle-top" title="Toggle always-on-top">⌃</button><button data-action="add" title="Add city">＋</button></div>`;
+    }
+
+    function widgetA() {
+      const clock = state.clocks[0];
+      return `<div class="widget widget-a" data-draggable style="${positionStyle()}">
+        <div class="widget-top"><div class="city">${clock.city}</div>${topIndicator()}</div>
+        <div class="time mono" data-time="${clock.id}">${timeFor(clock)}</div>${dateMarkup(clock)}${widgetActions()}
+      </div>`;
+    }
+    function widgetB() {
+      return `<div class="widget widget-b" data-draggable style="${positionStyle()}">
+        <div class="widget-top"><div class="widget-heading">World clocks</div>${topIndicator()}</div>
+        <div class="stack">${state.clocks.map((clock, index) => `<div class="row ${index === 0 ? "selected" : ""}"><div class="city">${clock.city}</div><div class="time mono" data-time="${clock.id}">${timeFor(clock)}</div>${dateMarkup(clock)}</div>`).join("")}</div>${widgetActions()}
+      </div>`;
+    }
+    function widgetC() {
+      return `<div class="widget widget-c" data-draggable style="${positionStyle()}">
+        <div class="stack">${state.clocks.map((clock) => `<div class="row"><div class="city">${clock.city}</div><div class="time mono" data-time="${clock.id}">${timeFor(clock)}</div>${dateMarkup(clock)}</div>`).join("")}</div>${widgetActions()}
+      </div>`;
+    }
+    function saverClock(clock, index) {
+      const positions = [
+        ["8%", "13%", "330px", "190px", "-4s"], ["66%", "10%", "270px", "220px", "-15s"], ["36%", "61%", "320px", "180px", "-27s"], ["78%", "68%", "230px", "190px", "-9s"], ["12%", "74%", "300px", "160px", "-34s"],
+      ];
+      const [left, top, dx, dy, delay] = positions[index % positions.length];
+      return `<div class="saver-clock" style="left:${left};top:${top};--dx:${dx};--dy:${dy};--delay:${delay}"><div class="city">${clock.city}</div><div class="time mono" data-time="${clock.id}">${timeFor(clock)}</div>${dateMarkup(clock)}</div>`;
+    }
+    function positionStyle() {
+      if (state.position.x == null) return "left:50%;top:50%;transform:translate(-50%,-50%)";
+      return `left:${state.position.x}px;top:${state.position.y}px`;
+    }
+    function setUrl() {
+      const url = new URL(location.href);
+      url.searchParams.set("variant", state.variant);
+      url.searchParams.set("mode", state.mode);
+      history.replaceState({}, "", url);
+    }
+    function render() {
+      setUrl();
+      if (state.mode === "saver") {
+        document.body.innerHTML = `<main id="app"><div class="screensaver"><div class="saver-note">screen-saver preview · clocks drift to reduce static image time</div>${state.clocks.map(saverClock).join("")}</div></main>${document.querySelector(".prototype-bar")?.outerHTML || ""}`;
+        document.getElementById("variant-label").innerHTML = `Screen saver<span>${state.clocks.length} moving clocks</span>`;
+      } else {
+        const widget = state.variant === "A" ? widgetA() : state.variant === "B" ? widgetB() : widgetC();
+        document.getElementById("app").innerHTML = `<div class="desktop"><div class="desktop-label">desktop surface · ${state.variant} / ${variants[state.variant].name}</div>${widget}<div class="drag-hint">drag anywhere · hover for controls</div></div>`;
+        document.getElementById("variant-label").innerHTML = `${state.variant}<span>${variants[state.variant].name}</span>`;
+      }
+      document.querySelectorAll("[data-variant]").forEach((button) => button.classList.toggle("active", button.dataset.variant === state.variant));
+      const modeButton = document.querySelector(".prototype-bar .mode");
+      if (modeButton) modeButton.textContent = state.mode === "widget" ? "Saver ↗" : "Widget ↙";
+      bindDragging();
+    }
+    function tick() {
+      state.clocks.forEach((clock) => document.querySelectorAll(`[data-time="${clock.id}"]`).forEach((element) => element.textContent = timeFor(clock)));
+    }
+    function addClock() {
+      const existing = new Set(state.clocks.map((clock) => clock.zone));
+      const next = cities.find((city) => !existing.has(city.zone));
+      if (next) { state.clocks.push({ id: `clock-${state.nextId++}`, ...next }); render(); }
+    }
+    function changeVariant(direction) {
+      const keys = Object.keys(variants); const index = keys.indexOf(state.variant); state.variant = keys[(index + direction + keys.length) % keys.length]; render();
+    }
+    function bindDragging() {
+      const widget = document.querySelector("[data-draggable]");
+      if (!widget || state.mode !== "widget") return;
+      let drag = null;
+      widget.addEventListener("pointerdown", (event) => {
+        if (event.target.closest("button")) return;
+        const rect = widget.getBoundingClientRect();
+        drag = { offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top };
+        widget.setPointerCapture(event.pointerId);
+        widget.style.transform = "none";
+      });
+      widget.addEventListener("pointermove", (event) => {
+        if (!drag) return;
+        state.position = { x: event.clientX - drag.offsetX, y: event.clientY - drag.offsetY };
+        widget.style.left = `${state.position.x}px`; widget.style.top = `${state.position.y}px`;
+      });
+      widget.addEventListener("pointerup", () => { drag = null; });
+      widget.addEventListener("pointercancel", () => { drag = null; });
+    }
+    document.addEventListener("click", (event) => {
+      const target = event.target.closest("[data-action], [data-variant]"); if (!target) return;
+      if (target.dataset.variant) { state.variant = target.dataset.variant; state.mode = "widget"; render(); }
+      if (target.dataset.action === "previous") changeVariant(-1);
+      if (target.dataset.action === "next") changeVariant(1);
+      if (target.dataset.action === "mode") { state.mode = state.mode === "widget" ? "saver" : "widget"; render(); }
+      if (target.dataset.action === "toggle-date") { state.showDate = !state.showDate; render(); }
+      if (target.dataset.action === "toggle-top") { state.alwaysOnTop = !state.alwaysOnTop; render(); }
+      if (target.dataset.action === "add") addClock();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft") changeVariant(-1);
+      if (event.key === "ArrowRight") changeVariant(1);
+      if (event.key === "Escape" && state.mode === "saver") { state.mode = "widget"; render(); }
+    });
+    render();
+    window.setInterval(tick, 1000);
+  </script>
+</body>
+</html>

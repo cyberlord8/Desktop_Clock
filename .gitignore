@@ -1,0 +1,13 @@
+# .NET build output
+**/bin/
+**/obj/
+
+# Visual Studio / IDE files
+.vs/
+*.user
+*.suo
+
+# Local diagnostics and publish output
+startup-error.txt
+startup-trace.txt
+publish/
