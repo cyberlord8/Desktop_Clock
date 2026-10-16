@@ -5,6 +5,7 @@ var tests = new (string Name, Action Test)[]
     ("formats a reading in the supplied time zone", FormatsReading),
     ("keeps the city and time-zone identity", PreservesIdentity),
     ("fails when the time-zone resolver cannot resolve a zone", FailsForUnknownZone),
+    ("contains unique cities with valid time zones", ValidatesClockCatalog),
     ("round-trips settings through JSON", RoundTripsSettings),
     ("uses defaults when the settings file is missing", UsesDefaultsWhenMissing),
     ("uses defaults when the settings file is malformed", UsesDefaultsWhenMalformed),
@@ -58,6 +59,16 @@ static void FailsForUnknownZone()
     var clock = new ClockDefinition("missing", "Missing", "missing");
 
     AssertThrows<TimeZoneNotFoundException>(() => service.GetReading(clock, DateTimeOffset.UtcNow));
+}
+
+static void ValidatesClockCatalog()
+{
+    AssertEqual(ClockCatalog.Default.Count, ClockCatalog.Default.Select(clock => clock.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+
+    foreach (var clock in ClockCatalog.Default)
+    {
+        _ = TimeZoneInfo.FindSystemTimeZoneById(clock.TimeZoneId);
+    }
 }
 
 static void RoundTripsSettings()
