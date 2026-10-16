@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -116,6 +117,7 @@ public partial class MainWindow : Window
                 LineHeight = 25,
             };
             TextOptions.SetTextFormattingMode(timeText, TextFormattingMode.Display);
+            Typography.SetNumeralAlignment(timeText, FontNumeralAlignment.Tabular);
             readingStack.Children.Add(timeText);
 
             if (_showDate)
