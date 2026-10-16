@@ -4,8 +4,13 @@
 
 # Visual Studio / IDE files
 .vs/
+.idea/
+.vscode/
 *.user
 *.suo
+*.csproj.user
+*.code-workspace
+*.swp
 
 # Local diagnostics and publish output
 startup-error.txt
@@ -13,3 +18,11 @@ startup-trace.txt
 publish/
 .build/
 .test-data/
+TestResults/
+artifacts/
+coverage/
+*.log
+
+# Operating-system files
+.DS_Store
+Thumbs.db
