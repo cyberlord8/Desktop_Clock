@@ -55,3 +55,7 @@ _Avoid_: Timer, countdown
 **Reminder**:
 The user-facing notification produced when a Timer or Alarm becomes due. Reminder is the shared outcome, not a replacement for either scheduling concept.
 _Avoid_: Timer, Alarm
+
+**Stopwatch**:
+An elapsed-time measurement tool that tracks how long something has been happening.
+_Avoid_: Timer, Alarm
