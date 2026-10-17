@@ -27,7 +27,7 @@
                  FontWeight="SemiBold" />
       <TextBlock Grid.Row="1"
                  Margin="0,5,0,14"
-                 Text="Choose the clocks and order them vertically."
+                 Text="Choose the clocks and set their order in the widget."
                  Foreground="#A6B0C2"
                  FontSize="11" />
 

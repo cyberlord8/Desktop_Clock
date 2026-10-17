@@ -76,13 +76,14 @@ static void RoundTripsSettings()
     WithTemporarySettingsPath(path =>
     {
         var store = new JsonClockSettingsStore(path);
-        var expected = new ClockSettings(false, false, 128.5, 642.25, ["phoenix", "tokyo"]);
+        var expected = new ClockSettings(false, false, 128.5, 642.25, ["phoenix", "tokyo"], ClockLayout.Horizontal);
 
         store.Save(expected);
 
         var actual = store.Load();
         AssertEqual(expected.ShowDate, actual.ShowDate);
         AssertEqual(expected.AlwaysOnTop, actual.AlwaysOnTop);
+        AssertEqual(expected.Layout, actual.Layout);
         AssertEqual(expected.Left, actual.Left);
         AssertEqual(expected.Top, actual.Top);
         AssertSequenceEqual(expected.ClockIds, actual.ClockIds);

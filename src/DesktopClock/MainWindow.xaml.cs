@@ -22,7 +22,10 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
     private MenuItem _showDateMenuItem = null!;
     private MenuItem _alwaysOnTopMenuItem = null!;
+    private MenuItem _verticalLayoutMenuItem = null!;
+    private MenuItem _horizontalLayoutMenuItem = null!;
     private bool _showDate = true;
+    private ClockLayout _layout = ClockLayout.Vertical;
     private ClockSettings _settings = ClockSettings.Default;
 
     public MainWindow()
@@ -30,6 +33,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         _settings = _settingsStore.Load();
         _showDate = _settings.ShowDate;
+        _layout = _settings.Layout;
         Topmost = _settings.AlwaysOnTop;
         foreach (var clockId in _settings.ClockIds ?? [])
         {
@@ -65,12 +69,29 @@ public partial class MainWindow : Window
             SaveSettings();
         };
 
+        var layoutMenu = new MenuItem { Header = "Layout" };
+        _verticalLayoutMenuItem = new MenuItem
+        {
+            Header = "Vertical",
+            IsCheckable = true,
+        };
+        _horizontalLayoutMenuItem = new MenuItem
+        {
+            Header = "Horizontal",
+            IsCheckable = true,
+        };
+        _verticalLayoutMenuItem.Click += (_, _) => SetLayout(ClockLayout.Vertical);
+        _horizontalLayoutMenuItem.Click += (_, _) => SetLayout(ClockLayout.Horizontal);
+        layoutMenu.Items.Add(_verticalLayoutMenuItem);
+        layoutMenu.Items.Add(_horizontalLayoutMenuItem);
+
         var exit = new MenuItem { Header = "Exit" };
         exit.Click += (_, _) => Close();
 
         menu.Items.Add(manageClocks);
         menu.Items.Add(_showDateMenuItem);
         menu.Items.Add(_alwaysOnTopMenuItem);
+        menu.Items.Add(layoutMenu);
         menu.Items.Add(new Separator());
         menu.Items.Add(exit);
         ContextMenu = menu;
@@ -78,23 +99,34 @@ public partial class MainWindow : Window
 
     private void Timer_Tick(object? sender, EventArgs e) => RenderClocks();
 
+    private void SetLayout(ClockLayout layout)
+    {
+        if (_layout == layout) return;
+
+        _layout = layout;
+        RenderClocks();
+        SaveSettings();
+    }
+
     private void RenderClocks()
     {
         ClockStack.Children.Clear();
+        ClockStack.Orientation = _layout == ClockLayout.Horizontal
+            ? Orientation.Horizontal
+            : Orientation.Vertical;
 
         foreach (var clock in _clocks)
         {
             var reading = _timeService.GetReading(clock, DateTimeOffset.Now);
             var row = new Border
             {
-                Padding = new Thickness(0, 2, 0, 2),
+                MinWidth = _layout == ClockLayout.Horizontal ? 112 : 0,
+                Padding = _layout == ClockLayout.Horizontal
+                    ? new Thickness(8, 2, 8, 2)
+                    : new Thickness(0, 2, 0, 2),
                 Background = Brushes.Transparent,
                 ToolTip = $"{reading.City} · {reading.TimeZoneId}",
             };
-
-            var grid = new Grid();
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var city = new TextBlock
             {
@@ -102,11 +134,21 @@ public partial class MainWindow : Window
                 Foreground = SecondaryText,
                 FontSize = 10,
                 FontWeight = FontWeights.SemiBold,
+                HorizontalAlignment = _layout == ClockLayout.Horizontal
+                    ? HorizontalAlignment.Center
+                    : HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 12, 0),
+                Margin = _layout == ClockLayout.Horizontal
+                    ? new Thickness(0)
+                    : new Thickness(0, 0, 12, 0),
             };
 
-            var readingStack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right };
+            var readingStack = new StackPanel
+            {
+                HorizontalAlignment = _layout == ClockLayout.Horizontal
+                    ? HorizontalAlignment.Center
+                    : HorizontalAlignment.Right,
+            };
             var timeText = new TextBlock
             {
                 Text = reading.TimeText,
@@ -115,6 +157,9 @@ public partial class MainWindow : Window
                 FontWeight = FontWeights.Light,
                 FontFamily = new FontFamily("Segoe UI"),
                 LineHeight = 25,
+                TextAlignment = _layout == ClockLayout.Horizontal
+                    ? TextAlignment.Center
+                    : TextAlignment.Right,
             };
             TextOptions.SetTextFormattingMode(timeText, TextFormattingMode.Display);
             Typography.SetNumeralAlignment(timeText, FontNumeralAlignment.Tabular);
@@ -127,21 +172,39 @@ public partial class MainWindow : Window
                     Text = reading.DateText,
                     Foreground = AccentText,
                     FontSize = 9,
-                    HorizontalAlignment = HorizontalAlignment.Right,
+                    HorizontalAlignment = _layout == ClockLayout.Horizontal
+                        ? HorizontalAlignment.Center
+                        : HorizontalAlignment.Right,
                 });
             }
 
-            Grid.SetColumn(city, 0);
-            Grid.SetColumn(readingStack, 1);
-            grid.Children.Add(city);
-            grid.Children.Add(readingStack);
-            row.Child = grid;
+            if (_layout == ClockLayout.Horizontal)
+            {
+                var tile = new StackPanel();
+                tile.Children.Add(city);
+                tile.Children.Add(readingStack);
+                row.Child = tile;
+            }
+            else
+            {
+                var grid = new Grid();
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                Grid.SetColumn(city, 0);
+                Grid.SetColumn(readingStack, 1);
+                grid.Children.Add(city);
+                grid.Children.Add(readingStack);
+                row.Child = grid;
+            }
+
             row.MouseLeftButtonDown += Window_MouseLeftButtonDown;
             ClockStack.Children.Add(row);
         }
 
         _showDateMenuItem.IsChecked = _showDate;
         _alwaysOnTopMenuItem.IsChecked = Topmost;
+        _verticalLayoutMenuItem.IsChecked = _layout == ClockLayout.Vertical;
+        _horizontalLayoutMenuItem.IsChecked = _layout == ClockLayout.Horizontal;
     }
 
     private void ManageClocks()
@@ -212,7 +275,13 @@ public partial class MainWindow : Window
     {
         double? left = double.IsNaN(Left) ? null : Left;
         double? top = double.IsNaN(Top) ? null : Top;
-        _settings = new ClockSettings(_showDate, Topmost, left, top, _clocks.Select(clock => clock.Id).ToArray());
+        _settings = new ClockSettings(
+            _showDate,
+            Topmost,
+            left,
+            top,
+            _clocks.Select(clock => clock.Id).ToArray(),
+            _layout);
         _settingsStore.Save(_settings);
     }
 

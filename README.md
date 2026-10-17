@@ -7,6 +7,7 @@ A small native WPF desktop widget for displaying local time and a configurable s
 - Floating, draggable clock widget
 - Always-on-top behavior
 - Multiple city clocks with configurable order
+- Vertical or horizontal clock layout
 - Optional date display
 - Per-user settings persisted between launches
 - A framework-independent core library for time-zone and settings logic
