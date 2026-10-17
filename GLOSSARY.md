@@ -43,3 +43,15 @@ _Avoid_: Clock value, timestamp
 **Clock order**:
 The user-defined vertical sequence in which clocks appear in the widget.
 _Avoid_: Priority, sort order
+
+**Timer**:
+A countdown reminder measured from a duration, such as “in 20 minutes.” A Timer fires when its duration elapses.
+_Avoid_: Alarm, scheduled time
+
+**Alarm**:
+A reminder scheduled for a calendar date and clock time, such as “tomorrow at 8 AM.” An Alarm may eventually repeat according to a recurrence rule.
+_Avoid_: Timer, countdown
+
+**Reminder**:
+The user-facing notification produced when a Timer or Alarm becomes due. Reminder is the shared outcome, not a replacement for either scheduling concept.
+_Avoid_: Timer, Alarm
